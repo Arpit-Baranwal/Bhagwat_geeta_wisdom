@@ -48,7 +48,7 @@ export default function Home() {
         situation: text,
       });
       setShloka(data);
-      saveToHistory(data);
+      if (!data.crisis) saveToHistory(data);
     } catch (e) {
       toast.error(
         e?.response?.data?.detail || "Could not find wisdom right now. Please try again."
@@ -161,7 +161,21 @@ export default function Home() {
       {/* Result */}
       {shloka && !loading && (
         <section className="mt-6" data-testid="shloka-result">
-          <ShlokaCard shloka={shloka} />
+          {shloka.crisis ? (
+            <div
+              data-testid="crisis-card"
+              className="rounded-3xl border-2 border-terracotta/60 bg-terracotta/5 p-8 md:p-10"
+            >
+              <p className="text-xs uppercase tracking-[0.25em] text-terracotta mb-3 font-sans">
+                You are not alone
+              </p>
+              <p className="font-sans text-base md:text-lg leading-relaxed text-ink whitespace-pre-line">
+                {shloka.practical_guidance}
+              </p>
+            </div>
+          ) : (
+            <ShlokaCard shloka={shloka} />
+          )}
         </section>
       )}
     </div>

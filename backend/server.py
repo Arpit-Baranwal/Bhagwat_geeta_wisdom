@@ -1,117 +1,36 @@
-from fastapi import FastAPI, APIRouter, HTTPException
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+"""FastAPI application and route handlers for the Geeta Wisdom API."""
 import os
-import logging
-import json
 import base64
 import uuid
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime, timezone
+from typing import List
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
+from fastapi import FastAPI, APIRouter, HTTPException, Request
+from starlette.middleware.cors import CORSMiddleware
 
+import retrieval
+from config import (
+    db,
+    logger,
+    anthropic_client,
+    eleven_client,
+    mongo_client,
+    LLM_MODEL,
+    DEFAULT_VOICE_ID,
+    TTS_MODEL_ID,
+    TTS_OUTPUT_FORMAT,
+    TTS_MIME_TYPE,
+    TTS_VOICE_SETTINGS,
+    MIN_SIMILARITY,
+)
+from models import ShlokaRequest, ShlokaResponse, TTSRequest, TTSResponse
+from prompts import SYSTEM_PROMPT, parse_llm_json
+from tts_cache import tts_cache_key, read_cached_audio, write_cached_audio
+import guardrails as g
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-mongo_client = AsyncIOMotorClient(mongo_url)
-db = mongo_client[os.environ['DB_NAME']]
-
-# Integrations
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
-ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
-
-eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
-
-# Default ElevenLabs voice (multilingual capable - "Rachel" multilingual)
-# Using a voice ID that works well with Sanskrit/Hindi via eleven_multilingual_v2
-DEFAULT_VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Adam - good multilingual male voice
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-
-# ============== MODELS ==============
-
-class ShlokaRequest(BaseModel):
-    situation: str
-    session_id: Optional[str] = None
-
-
-class ShlokaResponse(BaseModel):
-    id: str
-    situation: str
-    sanskrit: str
-    transliteration: str
-    hindi_translation: str
-    english_translation: str
-    practical_guidance: str
-    reference: str  # e.g. "Bhagavad Gita 2.47"
-    chapter: int
-    verse: int
-    created_at: str
-
-
-class TTSRequest(BaseModel):
-    text: str
-    voice_id: Optional[str] = None
-
-
-class TTSResponse(BaseModel):
-    audio_base64: str
-    mime_type: str = "audio/mpeg"
-
-
-# ============== HELPERS ==============
-
-SYSTEM_PROMPT = """You are a wise spiritual guide deeply versed in the Bhagavad Gita.
-Given a user's life situation or emotional state, you select ONE most relevant authentic shloka (verse) from the Bhagavad Gita that offers wisdom for their situation.
-
-You MUST respond ONLY with a valid JSON object (no markdown, no code fences, no explanations outside JSON) with the following exact fields:
-{
-  "sanskrit": "the original Sanskrit shloka in Devanagari script, with proper line breaks using \\n",
-  "transliteration": "IAST romanized transliteration of the shloka",
-  "hindi_translation": "clear, accurate Hindi translation in Devanagari",
-  "english_translation": "clear, accurate English translation",
-  "practical_guidance": "2-4 sentences explaining how this verse applies to the user's specific situation and what action or perspective they should adopt. Be warm, compassionate, and practical.",
-  "chapter": chapter_number_as_integer,
-  "verse": verse_number_as_integer,
-  "reference": "Bhagavad Gita Chapter.Verse (e.g. Bhagavad Gita 2.47)"
-}
-
-Choose authentic, well-known verses. Be accurate with Sanskrit. Respond ONLY with the JSON object."""
-
-
-def parse_llm_json(text: str) -> dict:
-    """Extract JSON from LLM response, stripping any markdown fences."""
-    text = text.strip()
-    if text.startswith("```"):
-        # Strip code fences
-        text = text.split("```", 2)
-        if len(text) >= 2:
-            inner = text[1]
-            if inner.startswith("json"):
-                inner = inner[4:]
-            text = inner.strip()
-        else:
-            text = "".join(text)
-    # Find JSON object boundaries
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1:
-        text = text[start:end + 1]
-    return json.loads(text)
 
 
 # ============== ROUTES ==============
@@ -122,77 +41,178 @@ async def root():
 
 
 @api_router.post("/shloka/generate", response_model=ShlokaResponse)
-async def generate_shloka(req: ShlokaRequest):
-    if not EMERGENT_LLM_KEY:
+async def generate_shloka(req: ShlokaRequest, request: Request):
+    if not anthropic_client:
         raise HTTPException(status_code=500, detail="LLM key not configured")
-    if not req.situation or len(req.situation.strip()) < 3:
-        raise HTTPException(status_code=400, detail="Please describe your situation in more detail")
 
-    session_id = req.session_id or str(uuid.uuid4())
-
-    try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=session_id,
-            system_message=SYSTEM_PROMPT,
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-
-        user_msg = UserMessage(text=f"My situation: {req.situation}\n\nProvide the most relevant Bhagavad Gita shloka with all required fields as JSON.")
-        response_text = await chat.send_message(user_msg)
-
-        data = parse_llm_json(response_text)
-
-        shloka_id = str(uuid.uuid4())
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        result = ShlokaResponse(
-            id=shloka_id,
-            situation=req.situation,
-            sanskrit=data.get("sanskrit", ""),
-            transliteration=data.get("transliteration", ""),
-            hindi_translation=data.get("hindi_translation", ""),
-            english_translation=data.get("english_translation", ""),
-            practical_guidance=data.get("practical_guidance", ""),
-            reference=data.get("reference", ""),
-            chapter=int(data.get("chapter", 0)),
-            verse=int(data.get("verse", 0)),
-            created_at=now_iso,
+    # Guardrail: per-client rate limiting.
+    if not g.check_rate_limit(g.client_key(request)):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please wait a moment before trying again.",
         )
 
-        # Save to history collection
-        await db.shloka_history.insert_one(result.model_dump())
+    # Guardrail: input validation & abuse limits.
+    situation = (req.situation or "").strip()
+    if len(situation) < g.MIN_SITUATION_LEN:
+        raise HTTPException(status_code=400, detail="Please describe your situation in more detail")
+    if len(situation) > g.MAX_SITUATION_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Please keep your situation under {g.MAX_SITUATION_LEN} characters.",
+        )
 
+    # Guardrail: crisis / self-harm safety. Short-circuit BEFORE the LLM and
+    # surface real support resources instead of a verse. No verse is attached so
+    # the client can render this as a distinct crisis panel, not a shloka card.
+    if g.is_crisis(situation):
+        result = ShlokaResponse(
+            id=str(uuid.uuid4()),
+            situation=situation,
+            sanskrit="",
+            transliteration="",
+            hindi_translation="",
+            english_translation="",
+            practical_guidance=g.CRISIS_MESSAGE,
+            reference="Support Resources",
+            chapter=0,
+            verse=0,
+            created_at=datetime.now(timezone.utc).isoformat(),
+            crisis=True,
+        )
+        # Deliberately not persisted to history.
         return result
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parse error: {e}; raw={response_text[:500] if 'response_text' in dir() else 'N/A'}")
-        raise HTTPException(status_code=500, detail="Could not parse wisdom. Please try again.")
+
+    # Guardrail: cheap off-topic/gibberish pre-filter. Reject obvious
+    # non-situations (math, symbol/number-only, gibberish) before any compute.
+    reason = g.off_topic_reason(situation)
+    if reason:
+        raise HTTPException(status_code=422, detail=reason)
+
+    # 1. Retrieve verified candidate verses from the corpus.
+    candidates = retrieval.retrieve_top_k(situation, k=3)
+    top_score = candidates[0][1] if candidates else 0.0
+    if not candidates or top_score < MIN_SIMILARITY:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not find a clearly relevant verse. Please describe your situation with a bit more detail.",
+        )
+
+    # Build the candidate block the LLM selects from (verified text only).
+    candidate_text = "\n\n".join(
+        f"[{i}] {v['reference']}\n"
+        f"Sanskrit: {v['sanskrit']}\n"
+        f"English: {v['english_translation']}"
+        for i, (v, _) in enumerate(candidates)
+    )
+    user_content = (
+        f"<situation>\n{situation}\n</situation>\n\n"
+        f"Candidate verses:\n{candidate_text}\n\n"
+        "Choose the best-fitting candidate by index and write the guidance as JSON."
+    )
+
+    try:
+        message = await anthropic_client.messages.create(
+            model=LLM_MODEL,
+            max_tokens=512,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        response_text = message.content[0].text
+        data = parse_llm_json(response_text)
+        # Guardrail: relevance gate. If the model judges the input is not a genuine
+        # life situation, reject rather than forcing an unrelated verse onto it.
+        if data.get("applicable") is False:
+            raise HTTPException(
+                status_code=422,
+                detail="Please share a real-life situation or feeling you'd like guidance on.",
+            )
+        # Guardrail: moderate the LLM-authored guidance before trusting it.
+        guidance = g.moderate_guidance(str(data.get("practical_guidance", "")))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.exception("Error generating shloka")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        # Retrieval already gave us a grounded verse; on any LLM/parse failure
+        # fall back to the top-similarity verse with no fabricated guidance.
+        logger.warning(f"LLM selection failed ({e}); falling back to top-1 retrieved verse")
+        data, guidance = {}, ""
+
+    # Resolve the chosen verse — default to the top-similarity candidate.
+    try:
+        chosen_index = int(data.get("chosen_index", 0))
+    except (TypeError, ValueError):
+        chosen_index = 0
+    if not 0 <= chosen_index < len(candidates):
+        chosen_index = 0
+    verse, _ = candidates[chosen_index]
+
+    if not guidance:
+        guidance = (
+            "Reflect on this verse in the context of your situation; let its "
+            "teaching guide your next step with a calm and steady mind."
+        )
+
+    # 2. Serve VERIFIED fields from the corpus; only guidance comes from the LLM.
+    result = ShlokaResponse(
+        id=str(uuid.uuid4()),
+        situation=situation,
+        sanskrit=verse["sanskrit"],
+        transliteration=verse["transliteration"],
+        hindi_translation=verse["hindi_translation"],
+        english_translation=verse["english_translation"],
+        practical_guidance=guidance,
+        reference=verse["reference"],
+        chapter=int(verse["chapter"]),
+        verse=int(verse["verse"]),
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    try:
+        await db.shloka_history.insert_one(result.model_dump())
+    except Exception:
+        logger.exception("Failed to persist shloka history")
+
+    return result
 
 
 @api_router.post("/tts/narrate", response_model=TTSResponse)
-async def narrate_text(req: TTSRequest):
+async def narrate_text(req: TTSRequest, request: Request):
     if not eleven_client:
         raise HTTPException(status_code=500, detail="ElevenLabs not configured")
+
+    if not g.check_rate_limit(g.client_key(request)):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please wait a moment before trying again.",
+        )
+
     if not req.text or len(req.text.strip()) == 0:
         raise HTTPException(status_code=400, detail="Text is required")
+    if len(req.text) > g.MAX_TTS_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text is too long (max {g.MAX_TTS_LEN} characters).",
+        )
 
     voice_id = req.voice_id or DEFAULT_VOICE_ID
+    key = tts_cache_key(req.text, voice_id)
 
-    try:
-        voice_settings = VoiceSettings(
-            stability=0.6,
-            similarity_boost=0.75,
-            style=0.3,
-            use_speaker_boost=True,
+    # 1. Cache hit: serve stored audio, no ElevenLabs call.
+    cached = await read_cached_audio(key)
+    if cached:
+        return TTSResponse(
+            audio_base64=cached["audio_base64"],
+            mime_type=cached.get("mime_type", TTS_MIME_TYPE),
         )
+
+    # 2. Cache miss: synthesize via ElevenLabs.
+    try:
         audio_iter = eleven_client.text_to_speech.convert(
             text=req.text,
             voice_id=voice_id,
-            model_id="eleven_multilingual_v2",
-            voice_settings=voice_settings,
-            output_format="mp3_44100_128",
+            model_id=TTS_MODEL_ID,
+            voice_settings=TTS_VOICE_SETTINGS,
+            output_format=TTS_OUTPUT_FORMAT,
         )
         audio_bytes = b""
         for chunk in audio_iter:
@@ -200,10 +220,14 @@ async def narrate_text(req: TTSRequest):
                 audio_bytes += chunk
 
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-        return TTSResponse(audio_base64=audio_b64, mime_type="audio/mpeg")
     except Exception as e:
         logger.exception("Error generating TTS")
         raise HTTPException(status_code=500, detail=f"TTS error: {str(e)}")
+
+    # 3. Lazy fill: store verse-sized results so future plays are free/instant.
+    await write_cached_audio(key, req.text, voice_id, audio_b64)
+
+    return TTSResponse(audio_base64=audio_b64, mime_type=TTS_MIME_TYPE)
 
 
 @api_router.get("/history", response_model=List[ShlokaResponse])

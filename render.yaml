@@ -1,0 +1,24 @@
+# Render Blueprint for the Geeta Wisdom FastAPI backend.
+# Deploy: push to GitHub, then "New +" → "Blueprint" in the Render dashboard.
+# MONGO_URL, ANTHROPIC_API_KEY and ELEVENLABS_API_KEY are marked sync:false —
+# set them as secrets in the Render dashboard (not committed to the repo).
+services:
+  - type: web
+    name: geeta-wisdom-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: geeta_wisdom
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        # Set to your Vercel frontend origin, e.g. https://geeta-wisdom.vercel.app
+        sync: false
