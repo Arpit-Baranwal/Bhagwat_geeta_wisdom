@@ -1,0 +1,9 @@
+# Never ship these into the image / Space repo
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+tests/
+test_*.py
+*.md
