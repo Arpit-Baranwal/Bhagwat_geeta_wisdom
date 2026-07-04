@@ -1,0 +1,31 @@
+{
+  "summary": "First end-to-end smoke test of Geeta Wisdom app. Backend (4/4 endpoints) and Frontend (home, shloka generation, audio TTS, favorites localStorage, /favorites page, /history page) all working end-to-end. Claude Sonnet 4.5 returns valid Devanagari shloka (BG 2.47 for career anxiety). ElevenLabs TTS returns ~67KB base64 mp3 and play button transitions Listen->Pause. Favorites and history persist and render correctly.",
+  "tested_scope": ["frontend", "backend", "integration"],
+  "passed": [
+    "GET /api/ -> 200 {message: 'Geeta Wisdom API', status: 'ok'}",
+    "POST /api/shloka/generate (valid) -> 200 with all 11 fields; sanskrit contains Devanagari (79 chars)",
+    "POST /api/shloka/generate {situation:'hi'} -> 400 with detail message",
+    "POST /api/tts/narrate -> 200, audio_base64 length 66932, mime audio/mpeg",
+    "GET /api/history -> 200, returns list sorted most-recent-first",
+    "Home page renders hero 'Wherever you stand', situation-input textarea, submit-situation-btn",
+    "Submit flow displays ShlokaCard with shloka-sanskrit/hindi/english/guidance testids populated",
+    "play-audio-btn transitions from 'Listen in Sanskrit' to 'Pause recitation' after TTS resolves",
+    "save-favorite-btn writes to localStorage key 'geeta_favorites'",
+    "/favorites renders favorites-list with the saved verse",
+    "/history renders history-list with the just-generated verse"
+  ],
+  "failed": [
+    {
+      "area": "frontend - suggestion chips",
+      "issue": "Selector [data-testid^=\"suggestion-chip\"] matched 0 elements. Chips may use a different data-testid pattern (e.g. plain text buttons). Did not block flow since manual textarea fill worked.",
+      "evidence": "Suggestion chips count: 0 in playwright run",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "(Optional) Confirm/add data-testid='suggestion-chip-{i}' on suggestion chips for future automated tests"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}

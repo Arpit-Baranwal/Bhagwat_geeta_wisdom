@@ -1,0 +1,107 @@
+{
+  "theme": "light",
+  "archetype": "1 (Organic & Earthy)",
+  "emotional_tone": "Calm, contemplative, grounded, editorial, profound.",
+  "typography": {
+    "fonts": {
+      "heading": "Cormorant Garamond",
+      "body": "Outfit",
+      "sanskrit": "Noto Serif Devanagari",
+      "install_commands": [
+        "@fontsource/cormorant-garamond",
+        "@fontsource/outfit",
+        "@fontsource/noto-serif-devanagari"
+      ]
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-serif tracking-tight text-ink",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-serif tracking-tight text-ink",
+      "shloka": "text-3xl sm:text-4xl lg:text-5xl font-serif tracking-normal text-moss leading-relaxed mb-6",
+      "body": "text-base md:text-lg font-sans text-stone leading-relaxed",
+      "small_label": "text-xs md:text-sm font-sans uppercase tracking-[0.2em] text-stone"
+    }
+  },
+  "colors": {
+    "background": {
+      "default": "#F9F7F3",
+      "paper": "#FFFFFF",
+      "subtle": "#EFEBE1"
+    },
+    "text": {
+      "ink": "#2C2A28",
+      "stone": "#6B6760",
+      "light": "#A39E96"
+    },
+    "brand": {
+      "moss": "#3A4B40",
+      "moss_hover": "#2B3830",
+      "terracotta": "#A86B4C",
+      "border": "#E6E2D8"
+    }
+  },
+  "spacing_and_layout": {
+    "container": "max-w-4xl mx-auto px-6 py-12 md:px-12 md:py-24",
+    "section_gap": "gap-16 md:gap-24",
+    "component_padding": "p-8 md:p-12"
+  },
+  "components": {
+    "textarea": {
+      "style": "w-full bg-white/60 border border-border rounded-lg p-6 text-lg font-sans resize-none focus:outline-none focus:ring-1 focus:ring-moss transition-all",
+      "placeholder": "Describe your situation... (e.g. I am feeling anxious about my career)"
+    },
+    "button": {
+      "primary": "bg-moss text-white px-8 py-4 rounded-full font-sans tracking-wide hover:bg-moss_hover transition-colors shadow-sm",
+      "secondary": "bg-transparent border border-border text-ink px-6 py-3 rounded-full hover:bg-border/50 transition-colors"
+    },
+    "cards": {
+      "shloka_card": "bg-white border border-border/50 rounded-2xl p-8 md:p-12 shadow-[0_8px_32px_rgba(44,42,40,0.04)]",
+      "history_card": "bg-transparent border-b border-border py-4 hover:bg-white/40 transition-colors cursor-pointer"
+    },
+    "audio_player": {
+      "style": "flex items-center gap-4 bg-subtle/50 rounded-full py-2 px-6 w-fit",
+      "icon": "text-moss w-5 h-5",
+      "text": "text-sm font-sans font-medium text-ink tracking-wide"
+    },
+    "chips": {
+      "style": "inline-flex items-center px-4 py-2 rounded-full border border-border/60 text-sm font-sans text-stone hover:border-moss hover:text-moss transition-all cursor-pointer bg-white/30"
+    }
+  },
+  "motion_and_interaction": {
+    "hover_states": "Buttons translate-y-[-1px] and drop subtle shadow. Text links change text color to moss.",
+    "page_transitions": "Fade in with subtle 10px translate-y on load using framer-motion.",
+    "loading_state": "A slow, breathing opacity pulse on the central 'Seeking Wisdom...' text.",
+    "shloka_reveal": "Staggered fade in: Sanskrit first, then Hindi, then English, then practical guidance."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Minimal, thin stroke (1.5px), consistent sizing (w-5 h-5 for inline, w-8 h-8 for primary actions)"
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://images.unsplash.com/photo-1581176512694-c56c5c731041?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxjYWxtJTIwbWluaW1hbCUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3ODI2NzczNDN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Calm minimal blue sea and sky, to be used with very low opacity (e.g., 5-10%) or as a subtle gradient texture behind the hero section."
+      },
+      {
+        "category": "texture_overlay",
+        "url": "https://images.pexels.com/photos/13207104/pexels-photo-13207104.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Ancient manuscript texture, to be used as a blend-mode multiply overlay at 3% opacity on the shloka display card for a tactile feel."
+      }
+    ]
+  },
+  "accessibility": {
+    "contrast": "All text must pass WCAG AA. The moss brand color (#3A4B40) against #F9F7F3 has a contrast ratio of 8.5:1 (Passes AAA).",
+    "testing_attributes": "Add data-testid to all interactable elements: submit-situation-btn, situation-input, play-audio-btn, save-favorite-btn, history-item."
+  },
+  "instructions_to_main_agent": [
+    "Install the specified font packages via npm/yarn.",
+    "Set up Tailwind config with the exact color hex codes and font families provided.",
+    "Build the UI focusing heavily on typographic alignment and white space.",
+    "Do NOT use typical dashboard or SaaS layouts. This should look like an interactive book or an editorial magazine.",
+    "For the Sanskrit verse, ensure Noto Serif Devanagari is explicitly applied so the characters render beautifully.",
+    "Implement the elevenlabs audio TTS in phase 2 by providing a clear but unobtrusive audio play button.",
+    "Use lucide-react for the play/pause, heart (favorites), and history icons.",
+    "Implement framer-motion for smooth staggered appearances of the text."
+  ]
+}
