@@ -3,7 +3,7 @@ import { History as HistoryIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import ShlokaCard from "../components/ShlokaCard";
 
-const HISTORY_KEY = "geeta_history";
+const HISTORY_KEY = "gita_history";
 
 export default function History() {
   const [items, setItems] = useState([]);

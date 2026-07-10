@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import ShlokaCard from "../components/ShlokaCard";
 
-const FAV_KEY = "geeta_favorites";
+const FAV_KEY = "gita_favorites";
 
 export default function Favorites() {
   const [favs, setFavs] = useState([]);

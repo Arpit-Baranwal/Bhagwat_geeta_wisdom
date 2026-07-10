@@ -46,7 +46,7 @@ module.exports = {
                 border: 'hsl(var(--border))',
                 input: 'hsl(var(--input))',
                 ring: 'hsl(var(--ring))',
-                // Geeta theme custom colors
+                // Gita theme custom colors
                 sand: '#F9F7F3',
                 paper: '#FFFFFF',
                 subtle: '#EFEBE1',
