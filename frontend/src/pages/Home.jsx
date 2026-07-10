@@ -8,7 +8,7 @@ import ShlokaCard from "../components/ShlokaCard";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const HISTORY_KEY = "geeta_history";
+const HISTORY_KEY = "gita_history";
 
 const SUGGESTIONS = [
   "I feel anxious about my career",
@@ -79,11 +79,11 @@ export default function Home() {
         </p>
         <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-ink tracking-tight">
           Wherever you stand,<br />
-          <span className="italic text-moss">the Geeta has a verse for you.</span>
+          <span className="italic text-moss">the Gita has a verse for you.</span>
         </h1>
         <p className="mt-6 md:mt-8 font-sans text-base md:text-lg text-stone max-w-2xl leading-relaxed">
           Share what you're feeling or facing. Receive a Bhagavad Gita shloka chosen
-          for your moment — in Sanskrit, with Hindi & English translations and
+          for your moment in Sanskrit, with Hindi & English translations and
           a quiet line of guidance for the path ahead.
         </p>
       </motion.section>

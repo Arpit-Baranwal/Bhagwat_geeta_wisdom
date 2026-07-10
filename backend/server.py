@@ -1,4 +1,4 @@
-"""FastAPI application and route handlers for the Geeta Wisdom API."""
+"""FastAPI application and route handlers for the Gita Wisdom API."""
 import os
 import base64
 import uuid
@@ -27,7 +27,10 @@ from models import ShlokaRequest, ShlokaResponse, TTSRequest, TTSResponse
 from prompts import SYSTEM_PROMPT, parse_llm_json
 from tts_cache import tts_cache_key, read_cached_audio, write_cached_audio
 import guardrails as g
+import tracing
 
+
+tracing.init_tracing()
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -37,7 +40,7 @@ api_router = APIRouter(prefix="/api")
 
 @api_router.get("/")
 async def root():
-    return {"message": "Geeta Wisdom API", "status": "ok"}
+    return {"message": "Gita Wisdom API", "status": "ok"}
 
 
 @api_router.post("/shloka/generate", response_model=ShlokaResponse)
@@ -90,7 +93,9 @@ async def generate_shloka(req: ShlokaRequest, request: Request):
         raise HTTPException(status_code=422, detail=reason)
 
     # 1. Retrieve verified candidate verses from the corpus.
-    candidates = retrieval.retrieve_top_k(situation, k=3)
+    with tracing.retrieval_span() as span:
+        candidates = retrieval.retrieve_top_k(situation, k=3)
+        tracing.record_candidates(span, situation, candidates)
     top_score = candidates[0][1] if candidates else 0.0
     if not candidates or top_score < MIN_SIMILARITY:
         raise HTTPException(

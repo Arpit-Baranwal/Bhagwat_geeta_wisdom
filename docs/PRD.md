@@ -1,4 +1,4 @@
-# Geeta Wisdom — PRD
+# Gita Wisdom — PRD
 
 ## Original Problem Statement
 > "i want to create a web app where i can get motivation from bhagwat geeta on the basis of situation i am in. then in 2nd phase i want to add a speaker to it which can narrate the sanskrit sholkah for us"
@@ -25,7 +25,7 @@
 - Frontend: React 19 + react-router + framer-motion + sonner + Tailwind
   - Theme: Organic & Earthy — Cormorant Garamond / Outfit / Noto Serif Devanagari, moss/sand palette
   - Pages: `/` (Home), `/favorites`, `/history`
-  - localStorage keys: `geeta_favorites`, `geeta_history`
+  - localStorage keys: `gita_favorites`, `gita_history` (auto-migrated from the old `geeta_*` keys on load)
 
 ## What's Implemented (2026-02)
 - [x] Day 1 MVP: situation → Claude Haiku 4.5 → structured Sanskrit shloka

@@ -100,6 +100,8 @@ def moderate_guidance(text: str) -> str:
     if not text:
         return ""
     text = text.strip()
+    # Em/en dashes read as AI-generated; rewrite them as natural comma pauses.
+    text = re.sub(r"\s*[—–]\s*", ", ", text)
     lowered = text.lower()
     if any(marker in lowered for marker in _OUTPUT_BLOCKLIST):
         logger.warning("Guidance failed output moderation; using fallback")

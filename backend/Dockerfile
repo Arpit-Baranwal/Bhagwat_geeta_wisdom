@@ -1,4 +1,4 @@
-# Geeta Wisdom API — deployed as a Hugging Face Docker Space.
+# Gita Wisdom API — deployed as a Hugging Face Docker Space.
 # Python 3.11 is pinned because torch/sentence-transformers ship stable wheels for it.
 FROM python:3.11-slim
 

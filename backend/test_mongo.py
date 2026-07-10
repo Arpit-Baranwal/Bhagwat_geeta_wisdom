@@ -18,7 +18,7 @@ load_dotenv(Path(__file__).parent / ".env")
 
 async def main() -> None:
     url = os.environ.get("MONGO_URL")
-    db_name = os.environ.get("DB_NAME", "geeta_wisdom")
+    db_name = os.environ.get("DB_NAME", "gita_wisdom")
     if not url or "<" in url:
         raise SystemExit("MONGO_URL is missing or still has a <placeholder> — edit backend/.env")
 

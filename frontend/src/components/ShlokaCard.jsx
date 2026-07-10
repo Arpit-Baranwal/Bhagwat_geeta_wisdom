@@ -7,7 +7,7 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const FAV_KEY = "geeta_favorites";
+const FAV_KEY = "gita_favorites";
 
 const isFav = (id) => {
   try {
@@ -83,7 +83,7 @@ export default function ShlokaCard({ shloka, defaultOpen = true }) {
     const shareText = `${shloka.sanskrit}\n\n— ${shloka.reference}\n\n"${shloka.english_translation}"`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Geeta Wisdom", text: shareText });
+        await navigator.share({ title: "Gita Wisdom", text: shareText });
       } else {
         await navigator.clipboard.writeText(shareText);
         toast.success("Copied to clipboard");

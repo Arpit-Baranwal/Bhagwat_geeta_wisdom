@@ -2,6 +2,19 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, History as HistoryIcon, BookOpen } from "lucide-react";
 
+// One-time migration: favorites/history saved under the old "geeta_*"
+// localStorage keys are carried over to the renamed "gita_*" keys.
+["favorites", "history"].forEach((k) => {
+  try {
+    const old = localStorage.getItem(`geeta_${k}`);
+    if (old && !localStorage.getItem(`gita_${k}`)) {
+      localStorage.setItem(`gita_${k}`, old);
+    }
+  } catch {
+    /* ignore */
+  }
+});
+
 const navItems = [
   { to: "/", label: "Seek", icon: BookOpen, testId: "nav-home" },
   { to: "/favorites", label: "Saved", icon: Heart, testId: "nav-favorites" },
@@ -17,7 +30,7 @@ export default function Layout() {
         <div className="max-w-5xl mx-auto px-6 md:px-12 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-baseline gap-3" data-testid="logo-link">
             <span className="font-serif text-2xl md:text-3xl tracking-tight text-ink">
-              Geeta<span className="text-moss italic"> Wisdom</span>
+              Gita<span className="text-moss italic"> Wisdom</span>
             </span>
             <span className="hidden sm:inline font-sanskrit text-sm text-stone">गीता ज्ञान</span>
           </Link>

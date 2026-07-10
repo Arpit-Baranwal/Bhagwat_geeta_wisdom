@@ -1,4 +1,4 @@
-# Geeta Wisdom
+# Gita Wisdom
 
 Describe a life situation and get a relevant Bhagavad Gita shloka — Sanskrit, transliteration,
 Hindi & English translation, and practical guidance — with optional Sanskrit audio narration.
